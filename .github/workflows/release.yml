@@ -1,0 +1,93 @@
+name: Release
+
+# Cuts a release when a v* tag is pushed:
+#
+#   git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+#
+# goreleaser builds every target, writes checksums.txt, and publishes the
+# GitHub Release. install.sh reads those assets, so the archive naming in
+# .goreleaser.yaml is a contract with it.
+#
+# workflow_dispatch runs the same build WITHOUT publishing, so the pipeline
+# can be exercised without burning a version number.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      # goreleaser creates the release and uploads the archives.
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # goreleaser derives the version and changelog from tags, and a
+          # shallow clone has none of them.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # Fail on a broken build here rather than half way through publishing.
+      # The `before` hooks in .goreleaser.yaml run the tests again for a real
+      # release; this covers the dispatch path too.
+      - name: Test
+        run: go test ./...
+
+      - name: Run goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          # A tag publishes; a manual run builds everything and publishes
+          # nothing, which is the point of the dispatch path.
+          args: >-
+            ${{ github.event_name == 'push'
+                && 'release --clean'
+                || 'release --snapshot --clean' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Proof the published archive actually runs and reports the tag it was
+      # cut from. A binary whose --version disagrees with its release is worse
+      # than no version at all, and this is the last point it can be caught.
+      - name: Verify the built binary reports its version
+        run: |
+          set -euo pipefail
+          tar -xzf dist/natprobe_*_linux_amd64.tar.gz -C /tmp natprobe
+          got="$(/tmp/natprobe --version)"
+          echo "${got}"
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            want="${GITHUB_REF_NAME#v}"
+            if ! printf '%s' "${got}" | grep -qF "${want}"; then
+              echo "::error::--version reports '${got}', which does not contain the tagged version '${want}'" >&2
+              exit 1
+            fi
+          fi
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Upload artifacts (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: natprobe-snapshot
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 7

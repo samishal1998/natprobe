@@ -1,6 +1,6 @@
 # natprobe — working notes
 
-Read this before changing anything under `projects/natprobe`. The user-facing
+Read this before changing anything in this repository. The user-facing
 behaviour is documented in [`README.md`](./README.md); this file is the part
 that is not obvious from the code: why the network code is shaped the way it
 is, what can actually be tested, and what will hang or silently lie if you
@@ -234,7 +234,6 @@ module rather than a third copy.
 Verified working in this repo (`GOTOOLCHAIN=local` is required here):
 
 ```console
-$ cd projects/natprobe
 $ GOTOOLCHAIN=local go build -o /tmp/natprobe ./cmd/natprobe
 $ GOTOOLCHAIN=local go test ./...          # 43 tests, ~5s
 $ GOTOOLCHAIN=local go test ./... -race    # clean
@@ -312,3 +311,41 @@ pattern — and note that `natprobe map` against a real router *writes* to it.
 - `renderAddr` in `gateway.go` detects an invalid address by comparing against
   the literal string `"invalid IP"`, i.e. it depends on `netip.Addr.String()`'s
   output for the zero value. `Self.IsValid()` would be the robust check.
+
+## Releasing
+
+Cut a release by pushing a tag; nothing else is manual:
+
+```console
+$ git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` runs goreleaser, which builds linux/darwin
+(amd64 + arm64) and windows/amd64, writes `checksums.txt`, and publishes the
+GitHub Release.
+
+Two things here are contracts, not preferences:
+
+- **The archive names.** `install.sh` constructs
+  `natprobe_<version>_<os>_<arch>.tar.gz` itself, so renaming the archives in
+  `.goreleaser.yaml` breaks the installer silently, for everyone, at the point
+  of download. Change them together or not at all.
+- **`checksums.txt`.** `install.sh` verifies every download against it and
+  refuses to install on a mismatch. Dropping it does not fail the install, it
+  degrades it to unverified, which is worse than loud breakage.
+
+The version is stamped through `-ldflags -X …/internal/cli.Version` and stays
+`dev` for an unstamped build. The workflow extracts the published linux/amd64
+archive and asserts `--version` contains the tag, because a binary whose
+version disagrees with its release is the kind of thing nobody notices until
+a bug report cites a version that was never cut.
+
+Exercise the whole pipeline without burning a version number:
+
+```console
+$ goreleaser check                        # config is valid
+$ GOTOOLCHAIN=local goreleaser release --snapshot --clean   # builds, publishes nothing
+```
+
+`workflow_dispatch` does the same on CI and uploads the archives as run
+artifacts.

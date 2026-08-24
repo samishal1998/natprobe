@@ -6,14 +6,44 @@ the LAN gateway for **UPnP IGD**, **PCP** (RFC 6887), and **NAT-PMP**
 language.
 
 Where a production port-mapping client (like
-[`namefi-dyndns`](../namefi-dyndns/)) stops at the first protocol that works,
-natprobe tries **all three to completion**, times each exchange, decodes every
-packet, and tells you *why* the ones that failed failed.
+[`namefi-dyndns`](https://github.com/d3servelabs/namefi-astra/tree/main/projects/namefi-dyndns))
+stops at the first protocol that works, natprobe tries **all three to
+completion**, times each exchange, decodes every packet, and tells you *why*
+the ones that failed failed.
+
+## Install
+
+macOS / Linux:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/samishal1998/natprobe/main/install.sh | sh
+```
+
+The installer picks the right build for your platform, verifies it against the
+published `checksums.txt`, and installs into `~/.local/bin` (or the first
+writable directory already on your `PATH`). Two knobs:
+
+```sh
+NATPROBE_VERSION=v0.1.0 sh install.sh      # pin a version
+NATPROBE_INSTALL_DIR=/usr/local/bin sh install.sh
+```
+
+With Go, or on Windows (where the installer does not apply, download the
+`.zip` from [Releases](https://github.com/samishal1998/natprobe/releases)):
+
+```sh
+go install github.com/samishal1998/natprobe/cmd/natprobe@latest
+```
 
 ## Quickstart
 
 ```console
-$ cd projects/natprobe
+$ natprobe check
+```
+
+From a source checkout:
+
+```console
 $ go build -o natprobe ./cmd/natprobe
 $ ./natprobe check
 ```

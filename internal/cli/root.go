@@ -31,6 +31,15 @@ type rootFlags struct {
 	timeout   time.Duration
 }
 
+// Version is the released version, stamped at build time with
+//
+//	-ldflags "-X github.com/samishal1998/natprobe/internal/cli.Version=v1.2.3"
+//
+// It stays "dev" for a `go build` or `go install` from source, which is the
+// honest answer: an unstamped binary is not a release, and saying so keeps a
+// bug report from being filed against a version that was never cut.
+var Version = "dev"
+
 // Run executes the CLI and returns the process exit code.
 func Run() int {
 	flags := &rootFlags{}
@@ -39,6 +48,7 @@ func Run() int {
 		Use:           "natprobe",
 		Short:         "Diagnose NAT traversal support (UPnP IGD, PCP, NAT-PMP) on the local gateway",
 		Long:          "natprobe is `dig` for NAT traversal: it probes the LAN gateway for UPnP IGD, PCP, and NAT-PMP support, shows wire-level detail, and explains failures in plain language.",
+		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
