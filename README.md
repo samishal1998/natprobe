@@ -5,11 +5,9 @@ the LAN gateway for **UPnP IGD**, **PCP** (RFC 6887), and **NAT-PMP**
 (RFC 6886) support, shows wire-level detail, and explains failures in plain
 language.
 
-Where a production port-mapping client (like
-[`namefi-dyndns`](https://github.com/d3servelabs/namefi-astra/tree/main/projects/namefi-dyndns))
-stops at the first protocol that works, natprobe tries **all three to
-completion**, times each exchange, decodes every packet, and tells you *why*
-the ones that failed failed.
+Where a production port-mapping client stops at the first protocol that
+works, natprobe tries **all three to completion**, times each exchange,
+decodes every packet, and tells you *why* the ones that failed failed.
 
 ## Install
 
